@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍕 Pizza Delivery</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Arial', sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px; 
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 40px;
+            color: white;
+        }
+        .header h1 { 
+            font-size: 3em; 
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 30px; 
+        }
+        .card { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .menu-grid { 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 15px; 
+        }
+        .pizza-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            padding: 15px;
+            border: 2px solid #f0f0f0;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        .pizza-item:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+        .btn { 
+            background: #ff6b6b; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 8px; 
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #ff5252;
+            transform: translateY(-2px);
+        }
+        .orders-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .order-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .live-badge {
+            background: #ff4757;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍕 Pizza Delivery</h1>
+            <p>Order your favorite pizza online! <span class="live-badge">LIVE</span></p>
+        </div>
+        
+        <div class="grid">
+            <!-- Menu Section -->
+            <div class="card">
+                <h2>Our Menu</h2>
+                <div class="menu-grid" id="menuGrid">
+                    <p>Loading menu...</p>
+                </div>
+            </div>
+            
+            <!-- Orders Section -->
+            <div class="card">
+                <h2>Live Orders <span class="live-badge" id="ordersCount">0</span></h2>
+                <div class="orders-list" id="ordersList">
+                    <p>No orders yet. Be the first to order!</p>
+                </div>
+                <button class="btn" onclick="addTestOrder()" style="margin-top: 15px; width: 100%;">
+                    + Add Test Order
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let menu = [];
+        let orders = [];
+
+        // Load menu when page loads
+        fetch('/api/menu')
+            .then(response => response.json())
+            .then(data => {
+                menu = data;
+                displayMenu();
+            });
+
+        // Real-time order updates
+        socket.on('ordersUpdate', (updatedOrders) => {
+            orders = updatedOrders;
+            displayOrders();
+        });
+
+        function displayMenu() {
+            const menuGrid = document.getElementById('menuGrid');
+            menuGrid.innerHTML = menu.map(pizza => `
+                <div class="pizza-item">
+                    <div>
+                        <strong>${pizza.name}</strong>
+                        <p style="color: #666; font-size: 14px;">${pizza.description}</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: bold; color: #ff6b6b;">$${pizza.price}</div>
+                        <button class="btn" onclick="orderPizza(${pizza.id})">Order</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayOrders() {
+            const ordersList = document.getElementById('ordersList');
+            const ordersCount = document.getElementById('ordersCount');
+            
+            ordersCount.textContent = orders.length;
+            
+            if (orders.length === 0) {
+                ordersList.innerHTML = '<p>No orders yet. Be the first to order!</p>';
+                return;
+            }
+
+            ordersList.innerHTML = orders.map(order => `
+                <div class="order-item">
+                    <strong>Order #${order.id}</strong>
+                    <p>Customer: ${order.customer}</p>
+                    <p>Items: ${order.items.map(item => item.name).join(', ')}</p>
+                    <p>Total: $${order.total}</p>
+                    <p>Status: <strong>${order.status}</strong></p>
+                    <small>${new Date(order.createdAt).toLocaleTimeString()}</small>
+                </div>
+            `).join('');
+        }
+
+        function orderPizza(pizzaId) {
+            const pizza = menu.find(p => p.id === pizzaId);
+            if (!pizza) return;
+
+            const orderData = {
+                customer: `Customer ${Math.floor(Math.random() * 1000)}`,
+                items: [{ id: pizza.id, name: pizza.name, price: pizza.price, quantity: 1 }],
+                total: pizza.price
+            };
+
+            fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            });
+        }
+
+        function addTestOrder() {
+            if (menu.length > 0) {
+                const randomPizza = menu[Math.floor(Math.random() * menu.length)];
+                orderPizza(randomPizza.id);
+            }
+        }
+    </script>
+</body>
+</html>
