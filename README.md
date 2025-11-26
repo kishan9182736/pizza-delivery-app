@@ -19,5 +19,5 @@ A full-stack pizza delivery application with real-time order tracking.
 2. Build Docker image: `docker build -t pizza-app ./backend`
 3. Run with PM2: `pm2 start --name pizza-app "docker run -p 5000:5000 pizza-app"`
 4. Configure NGINX
-<!-- Auto-update test: $(date) -->
-<!-- Test auto-update: Wed Nov 26 20:10:00 UTC 2025 -->
+
+<!-- Test from GitHub web interface: $(KHAITE JABO) -->
